@@ -42,6 +42,29 @@ Or:
 ./drone.exe
 ```
 
+## Web frontend (WASM build)
+
+The C simulation also compiles to WebAssembly for the browser frontend in `web/`.
+
+### Install Emscripten (one-time)
+
+```powershell
+git clone https://github.com/emscripten-core/emsdk.git C:\emsdk
+C:\emsdk\emsdk install latest
+C:\emsdk\emsdk activate latest
+C:\emsdk\emsdk_env.ps1
+```
+
+Verify: `emcc --version` should print a version banner.
+
+### Build the WASM module
+
+```sh
+mingw32-make -f Makefile.wasm
+```
+
+This produces `web/public/sim.wasm` and `web/public/sim_glue.js`.
+
 ## Controls
 
 | Screen | Keys |
