@@ -4,3 +4,13 @@
 
 html, body { height: 100%; }
 body { background: #0b1220; color: #e2e8f0; font-family: ui-sans-serif, system-ui, sans-serif; }
+
+/* uPlot dark theme — overrides the library's white defaults to match the page */
+.u-wrap        { background: transparent; color: #e2e8f0; }
+.u-title       { color: #e2e8f0; }
+.u-legend      { color: #cbd5e1; font-size: 0.75rem; }
+.u-legend .u-marker { width: 10px; height: 10px; }
+.u-axis        { color: #94a3b8; }
+.u-axis text   { fill: #94a3b8 !important; }
+.u-cursor-pt   { background: #22d3ee; }
+.u-select      { background: rgba(34, 211, 238, 0.15); }

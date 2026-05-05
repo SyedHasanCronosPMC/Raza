@@ -13,7 +13,8 @@
         const run = $currentRun;
         const ps  = $pinned;
         const target = $params.target_alt;
-        const w = container.clientWidth || 600;
+        // Subtract 16 (2 * p-2 padding) so the plot fits inside its padded container
+        const w = Math.max((container.clientWidth || 600) - 16, 280);
         const h = 360;
 
         if (plot) { plot.destroy(); plot = null; }
@@ -54,4 +55,11 @@
     });
 </script>
 
-<div bind:this={container} class="w-full bg-slate-900 rounded p-2 min-h-[360px]"></div>
+<div class="relative">
+    <div bind:this={container} class="w-full bg-slate-900 rounded p-2 min-h-[360px] overflow-hidden"></div>
+    {#if !$currentRun}
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p class="text-slate-500 text-sm">Loading simulation…</p>
+        </div>
+    {/if}
+</div>
