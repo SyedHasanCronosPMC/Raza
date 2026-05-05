@@ -24,6 +24,4 @@ dist/
 .vite/
 *.log
 
-# WASM build artifacts (added when frontend lands)
-web/public/sim.wasm
-web/public/sim_glue.js
+# (WASM artifacts are committed for Vercel deploy convenience; rebuild with `make -f Makefile.wasm`)
