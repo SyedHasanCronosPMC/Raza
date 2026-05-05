@@ -2,8 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body { height: 100%; }
-body { background: #0b1220; color: #e2e8f0; font-family: ui-sans-serif, system-ui, sans-serif; }
+/* Use min-height so content taller than the viewport extends body and the
+   document scrolls naturally; previously height:100% clipped the chart and
+   trailing panels on mobile. */
+html { background: #0b1220; }
+body {
+    min-height: 100vh;
+    background: #0b1220;
+    color: #e2e8f0;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    overflow-x: hidden;
+}
 
 /* uPlot dark theme — overrides the library's white defaults to match the page */
 .u-wrap        { background: transparent; color: #e2e8f0; }
