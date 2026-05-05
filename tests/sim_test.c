@@ -28,9 +28,30 @@ static int test_standard_hover_settles_near_target(void) {
     return 0;
 }
 
+static int test_rk4_settles_near_target(void) {
+    SimParams p = {
+        .kp = 2.0, .ki = 0.5, .kd = 1.0, .target_alt = 10.0,
+        .mass = 1.0, .gravity = 9.81,
+        .has_wind = 0, .wind_strength = 0.0,
+        .deriv_on_meas = 0, .integrator = 1,
+        .motor_tau = 0.0, .sensor_sigma = 0.0,
+        .integral_max = 50.0, .thrust_max = 150.0,
+        .duration = 10.0, .dt = 0.1, .seed = 42,
+    };
+    SimSample out[256];
+    int n = simulate(&p, out, 256);
+    if (n <= 0) { printf("FAIL: rk4 returned 0\n"); return 1; }
+    if (!near(out[n - 1].altitude, 10.0, 0.5)) {
+        printf("FAIL: rk4 final altitude %.3f not near 10.0\n", out[n - 1].altitude);
+        return 1;
+    }
+    return 0;
+}
+
 int main(void) {
     int failures = 0;
     failures += test_standard_hover_settles_near_target();
+    failures += test_rk4_settles_near_target();
     if (failures == 0) { printf("All tests passed.\n"); return 0; }
     printf("%d test(s) failed.\n", failures);
     return 1;
