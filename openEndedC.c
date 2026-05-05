@@ -141,7 +141,7 @@ void runLevel(int level, SimSample fLog[], int maxSteps, double dt) {
         .motor_tau = 0.0, .sensor_sigma = 0.0,
         .integral_max = 50.0, .thrust_max = 150.0,
         .duration = maxSteps * dt, .dt = dt,
-        .seed = (int)time(NULL),
+        .seed = 42,  // Reproducible runs; CLI may expose --seed in v2
     };
     int n = simulate(&params, fLog, maxSteps);
     if (n <= 0) {
