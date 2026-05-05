@@ -1,0 +1,29 @@
+# Build artifacts
+drone
+drone.exe
+*.o
+*.obj
+*.exe
+
+# Generated output
+flight_log.csv
+
+# Demo recording (large; track via Git LFS if needed)
+*.mp4
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Web (added when frontend lands)
+node_modules/
+dist/
+.vite/
+*.log
+
+# WASM build artifacts (added when frontend lands)
+web/public/sim.wasm
+web/public/sim_glue.js
