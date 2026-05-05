@@ -26,7 +26,7 @@ ANSI colors and cursor control require a VT100-capable terminal
 #include <math.h>
 #include <time.h>
 #include <conio.h>
-
+#include "sim.h"
 
 #define STEPS 100         // 10 seconds at 0.1s dt
 #define DT 0.1
@@ -42,13 +42,6 @@ ANSI colors and cursor control require a VT100-capable terminal
 #define THRUST_MAX 150.0    // motor saturation ceiling
 
 
-typedef struct {
-    double time;
-    double altitude;
-    double error;
-    double thrust;
-} FlightData;
-
 
 void clearScreen();
 void resetCursor();
@@ -58,13 +51,12 @@ void displayMath();
 
 int getValidMenuChoice();
 
-void runLevel(int level, FlightData fLog[], int maxSteps, double dt);
+void runLevel(int level, SimSample fLog[], int maxSteps, double dt);
 void tunePID(double *kp, double *ki, double *kd, double *targetAlt, const char* levelName);
-void runSimulation(double target, double kp, double ki, double kd, double mass, bool hasWind, FlightData log[], int maxSteps, double dt);
-void drawStepResponse(FlightData log[], int maxSteps, double target, double kp, double ki, double kd);
-void analyzeFlight(FlightData log[], int numSteps, double target, double dt);
+void drawStepResponse(SimSample log[], int maxSteps, double target, double kp, double ki, double kd);
+void analyzeFlight(SimSample log[], int numSteps, double target, double dt);
 void drawSlider(const char* label, double value, double maxVal, bool isSelected);
-void saveFlightLog(const char* path, FlightData log[], int numSteps,
+void saveFlightLog(const char* path, SimSample log[], int numSteps,
                    const char* levelName, double kp, double ki, double kd,
                    double targetAlt, double mass);
 
@@ -72,7 +64,7 @@ void saveFlightLog(const char* path, FlightData log[], int numSteps,
 int main() {
     bool programRunning = true;
 
-    FlightData flightLog[STEPS]; // array of structs, each 0.1 second is a new struct
+    SimSample flightLog[STEPS]; // array of structs, each 0.1 second is a new struct
 
     srand(time(NULL)); // for random value of wind
 
@@ -121,7 +113,7 @@ int getValidMenuChoice() {
 }
 
 
-void runLevel(int level, FlightData fLog[], int maxSteps, double dt) {
+void runLevel(int level, SimSample fLog[], int maxSteps, double dt) {
     double kp = 2.0, ki = 0.5, kd = 1.0, targetAlt = 10.0; // default values shown
     double mass = 1.0;
     bool hasWind = false; // disturbance to system
@@ -140,7 +132,22 @@ void runLevel(int level, FlightData fLog[], int maxSteps, double dt) {
 
     tunePID(&kp, &ki, &kd, &targetAlt, levelName);
 
-    runSimulation(targetAlt, kp, ki, kd, mass, hasWind, fLog, maxSteps, dt);     // functions explained in detail in definition
+    SimParams params = {
+        .kp = kp, .ki = ki, .kd = kd, .target_alt = targetAlt,
+        .mass = mass, .gravity = 9.81,
+        .has_wind = hasWind ? 1 : 0,
+        .wind_strength = 4.0,
+        .deriv_on_meas = 0, .integrator = 0,
+        .motor_tau = 0.0, .sensor_sigma = 0.0,
+        .integral_max = 50.0, .thrust_max = 150.0,
+        .duration = maxSteps * dt, .dt = dt,
+        .seed = (int)time(NULL),
+    };
+    int n = simulate(&params, fLog, maxSteps);
+    if (n <= 0) {
+        printf("\033[31mSimulation failed\033[0m\n");
+        return;
+    }
 
     drawStepResponse(fLog, maxSteps, targetAlt, kp, ki, kd);
 
@@ -155,52 +162,9 @@ void runLevel(int level, FlightData fLog[], int maxSteps, double dt) {
 
 
 
-void runSimulation(double target, double kp, double ki, double kd, double mass, bool hasWind, FlightData log[], int maxSteps, double dt) {
-    double currentAlt = 0.0, velocity = 0.0, integral = 0.0;
-    double prevError = target - currentAlt;
-    double gravity = 9.81;
-    double windForce = 0.0; // sustained between gust updates so wind acts continuously
-
-    for (int step = 0; step < maxSteps; step++) {
-        double error = target - currentAlt;
-        integral = integral + (error * dt);     // sums up error for each 0.1s and stores total
-        // Anti-windup: bound the integral so a long approach can't saturate Ki * integral
-        if (integral > INTEGRAL_MAX) integral = INTEGRAL_MAX;
-        if (integral < -INTEGRAL_MAX) integral = -INTEGRAL_MAX;
-
-        double derivative = (error - prevError) / dt;
-
-        double thrust = (kp * error) + (ki * integral) + (kd * derivative);   // u = P + I + D
-        if (thrust < 0) thrust = 0;                          // drones can't pull down
-        if (thrust > THRUST_MAX) thrust = THRUST_MAX;        // motor saturation
-
-        if (hasWind && step % 20 == 0) {
-            // Re-randomize the gust every 2s; held at this value until the next update
-            windForce = ((double)rand() / RAND_MAX) * 8.0 - 4.0;
-        }
-        if (!hasWind) windForce = 0.0;
-
-        double netForce = thrust - (mass * gravity) + windForce;
-        double acceleration = netForce / mass;
-
-        velocity = velocity + (acceleration * dt);    // first calculated to later calculate the current altitude
-        currentAlt = currentAlt + (velocity * dt);
-
-        if (currentAlt < 0.0) { currentAlt = 0.0; velocity = 0.0; } // can't go below ground level
-
-
-        log[step].time = step * dt;
-        log[step].altitude = currentAlt;
-        log[step].error = error;
-        log[step].thrust = thrust;
-        prevError = error;
-    }
-}
-
-
 
 // creating a step response graph
-void drawStepResponse(FlightData log[], int maxSteps, double target, double kp, double ki, double kd) {
+void drawStepResponse(SimSample log[], int maxSteps, double target, double kp, double ki, double kd) {
     char grid[ROWS][COLS];
 
     for (int r = 0; r < ROWS; r++) {   // creates an empty graph
@@ -253,7 +217,7 @@ void drawStepResponse(FlightData log[], int maxSteps, double target, double kp, 
 // Reports stepinfo: peak altitude, overshoot, rise time (10% to 90% of target),
 // settling time (last exit from +/-2% band), and steady-state error averaged over
 // the last 1 second so a single oscillation sample doesn't bias the result.
-void analyzeFlight(FlightData log[], int numSteps, double target, double dt) {
+void analyzeFlight(SimSample log[], int numSteps, double target, double dt) {
     double maxReached = 0.0;
 
     for (int i = 0; i < numSteps; i++) {
@@ -435,7 +399,7 @@ void resetCursor() {
 // Writes the flight log to CSV. Header lines starting with '#' carry the run
 // metadata; the data block is plain time,altitude,error,thrust columns so
 // pandas, numpy, and Excel can read it directly.
-void saveFlightLog(const char* path, FlightData log[], int numSteps,
+void saveFlightLog(const char* path, SimSample log[], int numSteps,
                    const char* levelName, double kp, double ki, double kd,
                    double targetAlt, double mass) {
     FILE* fp = fopen(path, "w");
