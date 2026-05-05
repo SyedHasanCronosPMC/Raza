@@ -1,0 +1,37 @@
+// tests/sim_test.c
+// Regression tests for the simulation. Anchored values were captured from
+// the working CLI binary on 2026-05-05 commit d7b0f2d with seed=42.
+#include <stdio.h>
+#include <math.h>
+#include "../sim.h"
+
+static int near(double a, double b, double tol) { return fabs(a - b) <= tol; }
+
+static int test_standard_hover_settles_near_target(void) {
+    SimParams p = {
+        .kp = 2.0, .ki = 0.5, .kd = 1.0, .target_alt = 10.0,
+        .mass = 1.0, .gravity = 9.81,
+        .has_wind = 0, .wind_strength = 0.0,
+        .deriv_on_meas = 0, .integrator = 0,
+        .motor_tau = 0.0, .sensor_sigma = 0.0,
+        .integral_max = 50.0, .thrust_max = 150.0,
+        .duration = 10.0, .dt = 0.1, .seed = 42,
+    };
+    SimSample out[256];
+    int n = simulate(&p, out, 256);
+    if (n != 100) { printf("FAIL: expected 100 samples, got %d\n", n); return 1; }
+    double final = out[n - 1].altitude;
+    if (!near(final, 10.0, 0.5)) {
+        printf("FAIL: expected final altitude near 10.0m, got %.3f\n", final);
+        return 1;
+    }
+    return 0;
+}
+
+int main(void) {
+    int failures = 0;
+    failures += test_standard_hover_settles_near_target();
+    if (failures == 0) { printf("All tests passed.\n"); return 0; }
+    printf("%d test(s) failed.\n", failures);
+    return 1;
+}
