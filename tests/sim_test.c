@@ -28,6 +28,30 @@ static int test_standard_hover_settles_near_target(void) {
     return 0;
 }
 
+static int test_seed_is_deterministic(void) {
+    SimParams p = {
+        .kp = 2.0, .ki = 0.5, .kd = 1.0, .target_alt = 10.0,
+        .mass = 1.0, .gravity = 9.81,
+        .has_wind = 1, .wind_strength = 4.0,
+        .deriv_on_meas = 0, .integrator = 0,
+        .motor_tau = 0.0, .sensor_sigma = 0.0,
+        .integral_max = 50.0, .thrust_max = 150.0,
+        .duration = 5.0, .dt = 0.1, .seed = 7,
+    };
+    SimSample a[64], b[64];
+    int na = simulate(&p, a, 64);
+    int nb = simulate(&p, b, 64);
+    if (na != nb) { printf("FAIL: sample count mismatch\n"); return 1; }
+    for (int i = 0; i < na; i++) {
+        if (!near(a[i].altitude, b[i].altitude, 1e-12)) {
+            printf("FAIL: sample %d altitude diverges (%.6f vs %.6f)\n",
+                   i, a[i].altitude, b[i].altitude);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static int test_rk4_settles_near_target(void) {
     SimParams p = {
         .kp = 2.0, .ki = 0.5, .kd = 1.0, .target_alt = 10.0,
@@ -51,6 +75,7 @@ static int test_rk4_settles_near_target(void) {
 int main(void) {
     int failures = 0;
     failures += test_standard_hover_settles_near_target();
+    failures += test_seed_is_deterministic();
     failures += test_rk4_settles_near_target();
     if (failures == 0) { printf("All tests passed.\n"); return 0; }
     printf("%d test(s) failed.\n", failures);
