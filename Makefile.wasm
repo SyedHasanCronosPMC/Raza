@@ -1,0 +1,30 @@
+# Compiles sim.c to web/public/sim.wasm + sim_glue.js via Emscripten.
+# Requires emcc on PATH (run emsdk_env first).
+
+EMCC      := emcc
+SRC       := sim.c
+HEADER    := sim.h
+OUT_DIR   := web/public
+GLUE      := $(OUT_DIR)/sim_glue.js
+WASM      := $(OUT_DIR)/sim.wasm
+# emcc names the .wasm after the .js output filename, so compile to sim.js
+# (producing sim.wasm) then rename sim.js -> sim_glue.js.
+SIM_JS    := $(OUT_DIR)/sim.js
+
+EMFLAGS := -O3 -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 \
+           -s EXPORT_NAME=createSimModule \
+           -s ENVIRONMENT=web,node \
+           -s ALLOW_MEMORY_GROWTH=1 \
+           -s EXPORTED_FUNCTIONS='["_simulate","_malloc","_free"]' \
+           -s EXPORTED_RUNTIME_METHODS='["HEAPF64","HEAP32","HEAPU8"]'
+
+.PHONY: wasm clean
+
+wasm: $(GLUE)
+
+$(GLUE): $(SRC) $(HEADER)
+	$(EMCC) $(EMFLAGS) $(SRC) -o $(SIM_JS)
+	move $(subst /,\,$(SIM_JS)) $(subst /,\,$(GLUE))
+
+clean:
+	-rm -f $(GLUE) $(WASM) $(SIM_JS)
