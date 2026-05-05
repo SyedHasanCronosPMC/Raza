@@ -61,7 +61,29 @@ void saveFlightLog(const char* path, SimSample log[], int numSteps,
                    double targetAlt, double mass);
 
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc >= 2 && argv[1] != NULL) {
+        if (argv[1][0] == '-' && argv[1][1] == '-' &&
+            argv[1][2] == 's' && argv[1][3] == 'm' &&
+            argv[1][4] == 'o' && argv[1][5] == 'k' &&
+            argv[1][6] == 'e' && argv[1][7] == '\0') {
+            SimParams sp = {
+                .kp = 2.0, .ki = 0.5, .kd = 1.0, .target_alt = 10.0,
+                .mass = 1.0, .gravity = 9.81,
+                .has_wind = 0, .wind_strength = 0.0,
+                .deriv_on_meas = 0, .integrator = 0,
+                .motor_tau = 0.0, .sensor_sigma = 0.0,
+                .integral_max = 50.0, .thrust_max = 150.0,
+                .duration = 10.0, .dt = 0.1, .seed = 42,
+            };
+            SimSample buf[256];
+            int n = simulate(&sp, buf, 256);
+            if (n <= 0) { printf("smoke: simulate() returned %d\n", n); return 1; }
+            printf("smoke: n=%d final_alt=%.4f\n", n, buf[n - 1].altitude);
+            return 0;
+        }
+    }
+
     bool programRunning = true;
 
     SimSample flightLog[STEPS]; // array of structs, each 0.1 second is a new struct
